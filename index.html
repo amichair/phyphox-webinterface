@@ -338,14 +338,8 @@
         measuring = s["measuring"];
         timedRun = s["timedRun"];
         countDown = s["countDown"];
-        if (measuring)
-            header.classList.add("active");
-        else
-            header.classList.remove("active");
-        if (countDown != 0)
-            header.classList.add("countdown");
-        else
-            header.classList.remove("countdown");
+        header.classList.toggle("active", measuring);
+        header.classList.toggle("countdown", countDown != 0);
         if (countDown != 0) {
             document.getElementById("countdown").textContent = Math.ceil(countDown/1000) + "s";
         } else {
@@ -386,12 +380,8 @@
 
         var liElements = viewSelector.getElementsByTagName("li");
         for (var i = 0; i < liElements.length; i++) {
-            var el = liElements[i];
-            if (i == currentView)
-                el.classList.add("active");
-            else
-                el.classList.remove("active");
-        };
+            liElements[i].classList.toggle("active", i == currentView);
+        }
         recreateViews();
     }
 
