@@ -227,10 +227,10 @@
         var modePriority = [];
         views[currentView].elements.forEach(function(ve) {
             if (ve.hasOwnProperty("dataInput")) {
-                for (var index = 0; index < ve.dataInput.length; index++) {
-                    if (ve.dataInput[index] == null)
+                for (var i = 0; i < ve.dataInput.length; i++) {
+                    if (ve.dataInput[i] == null)
                         continue;
-                    let varStr = ve.dataInput[index];
+                    let varStr = ve.dataInput[i];
                     let varKey = "buffer:" + varStr;
                     if (ve.updateMode == "single" || ve.updateMode == "input") {
                         if (modePriority[varKey] >= 1)
@@ -240,13 +240,13 @@
                     } else if (ve.updateMode == "partial") {
                         if (modePriority[varKey] >= 2)
                             continue;
-                        var dependentVar = ((ve.dataInput.length > index + 1) && (index % 2 == 0)) ? ve.dataInput[index+1] : ve.dataInput[index];
+                        var dependentVar = ((ve.dataInput.length > i + 1) && (i % 2 == 0)) ? ve.dataInput[i+1] : ve.dataInput[i];
                         usedVars[varKey] = composeVarStr(varStr, "partial", dependentVar);
                         modePriority[varKey] = 2;
                     } else if (ve.updateMode == "partialXYZ") {
                         if (modePriority[varKey] >= 3)
                             continue;
-                        var dependentVar = ve.dataInput[Math.floor(index / 3)];
+                        var dependentVar = ve.dataInput[Math.floor(i / 3)];
                         usedVars[varKey] = composeVarStr(varStr, "partialXYZ", dependentVar);
                         modePriority[varKey] = 3;
                     } else if (ve.updateMode == "full") {
@@ -281,20 +281,20 @@
         updateUsedVarStr();
         ajax("get?" + usedVarStr,
             function( jsonData ) {
-                for (var index in jsonData.buffer) {
-                    if (jsonData.buffer[index].updateMode == "partial" && data.hasOwnProperty(index) && data[index].data.length > 0) {
-                        if (jsonData.buffer[index].buffer.length == 0) {
-                            data[index].changed = false;
+                for (var name in jsonData.buffer) {
+                    if (jsonData.buffer[name].updateMode == "partial" && data.hasOwnProperty(name) && data[name].data.length > 0) {
+                        if (jsonData.buffer[name].buffer.length == 0) {
+                            data[name].changed = false;
                             continue;
                         }
-                        data[index].data = data[index].data.concat(nullToNaN(jsonData.buffer[index].buffer));
-                        if (jsonData.buffer[index].size > 0)
-                            data[index].data.splice(0, data[index].data.length - jsonData.buffer[index].size);
-                        data[index].changed = true;
+                        data[name].data = data[name].data.concat(nullToNaN(jsonData.buffer[name].buffer));
+                        if (jsonData.buffer[name].size > 0)
+                            data[name].data.splice(0, data[name].data.length - jsonData.buffer[name].size);
+                        data[name].changed = true;
                     } else {
-                        data[index] = {};
-                        data[index].data = nullToNaN(jsonData.buffer[index].buffer);
-                        data[index].changed = true;
+                        data[name] = {};
+                        data[name].data = nullToNaN(jsonData.buffer[name].buffer);
+                        data[name].changed = true;
                     }
                 }
                 updateViews();
