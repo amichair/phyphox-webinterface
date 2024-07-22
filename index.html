@@ -25,7 +25,7 @@
     var data = {};
     var elementData = [];
     var nViews = views.length;
-    var nElements = 1*(views[nViews-1]["elements"][views[nViews-1]["elements"].length-1]["index"])+1;
+    var nElements = 1*(views[nViews - 1].elements[views[nViews - 1].elements.length - 1].index)+1;
 
     var measuring = true;
     var countDown = 0;
@@ -209,12 +209,12 @@
         if (partial == "full")
             return namePart + "=full";
         if (partial == "partial" || partial == "partialXYZ") {
-            if ((!forceFull) && data.hasOwnProperty(partialComponent) && data[partialComponent]["data"].length > 0 && data.hasOwnProperty(name) && data[name]["data"].length > 0) {
+            if ((!forceFull) && data.hasOwnProperty(partialComponent) && data[partialComponent].data.length > 0 && data.hasOwnProperty(name) && data[name].data.length > 0) {
                 if (partialComponent == name)
-                    return namePart + "=" + data[partialComponent]["data"][data[partialComponent]["data"].length-1];
+                    return namePart + "=" + data[partialComponent].data[data[partialComponent].data.length-1];
                 else {
-                    var minLength = Math.min(data[partialComponent]["data"].length, data[name]["data"].length);
-                    return namePart + "=" + encodeURIComponent(data[partialComponent]["data"][minLength-1] + "|" + partialComponent);
+                    var minLength = Math.min(data[partialComponent].data.length, data[name].data.length);
+                    return namePart + "=" + encodeURIComponent(data[partialComponent].data[minLength-1] + "|" + partialComponent);
                 }
             } else
                 return namePart + "=full";
@@ -225,31 +225,31 @@
     function updateUsedVarStr() {
         var usedVars = [];
         var modePriority = [];
-        views[currentView]["elements"].forEach(function(ve) {
+        views[currentView].elements.forEach(function(ve) {
             if (ve.hasOwnProperty("dataInput")) {
-                for (var index = 0; index < ve["dataInput"].length; index++) {
-                    if (ve["dataInput"][index] == null)
+                for (var index = 0; index < ve.dataInput.length; index++) {
+                    if (ve.dataInput[index] == null)
                         continue;
-                    let varStr = ve["dataInput"][index];
+                    let varStr = ve.dataInput[index];
                     let varKey = "buffer:" + varStr;
-                    if (ve["updateMode"] == "single" || ve["updateMode"] == "input") {
+                    if (ve.updateMode == "single" || ve.updateMode == "input") {
                         if (modePriority[varKey] >= 1)
                             continue;
                         usedVars[varKey] = composeVarStr(varStr, "single");
                         modePriority[varKey] = 1;
-                    } else if (ve["updateMode"] == "partial") {
+                    } else if (ve.updateMode == "partial") {
                         if (modePriority[varKey] >= 2)
                             continue;
-                        var dependentVar = ((ve["dataInput"].length > index + 1) && (index % 2 == 0)) ? ve["dataInput"][index+1] : ve["dataInput"][index];
+                        var dependentVar = ((ve.dataInput.length > index + 1) && (index % 2 == 0)) ? ve.dataInput[index+1] : ve.dataInput[index];
                         usedVars[varKey] = composeVarStr(varStr, "partial", dependentVar);
                         modePriority[varKey] = 2;
-                    } else if (ve["updateMode"] == "partialXYZ") {
+                    } else if (ve.updateMode == "partialXYZ") {
                         if (modePriority[varKey] >= 3)
                             continue;
-                        var dependentVar = ve["dataInput"][Math.floor(index / 3)];
+                        var dependentVar = ve.dataInput[Math.floor(index / 3)];
                         usedVars[varKey] = composeVarStr(varStr, "partialXYZ", dependentVar);
                         modePriority[varKey] = 3;
-                    } else if (ve["updateMode"] == "full") {
+                    } else if (ve.updateMode == "full") {
                         if (modePriority[varKey] >= 4)
                             continue;
                         usedVars[varKey] = composeVarStr(varStr, "full");
@@ -281,24 +281,24 @@
         updateUsedVarStr();
         ajax("get?" + usedVarStr,
             function( jsonData ) {
-                for (var index in jsonData["buffer"]) {
-                    if (jsonData["buffer"][index]["updateMode"] == "partial" && data.hasOwnProperty(index) && data[index]["data"].length > 0) {
-                        if (jsonData["buffer"][index]["buffer"].length == 0) {
-                            data[index]["changed"] = false;
+                for (var index in jsonData.buffer) {
+                    if (jsonData.buffer[index].updateMode == "partial" && data.hasOwnProperty(index) && data[index].data.length > 0) {
+                        if (jsonData.buffer[index].buffer.length == 0) {
+                            data[index].changed = false;
                             continue;
                         }
-                        data[index]["data"] = data[index]["data"].concat(nullToNaN(jsonData["buffer"][index]["buffer"]));
-                        if (jsonData["buffer"][index]["size"] > 0)
-                            data[index]["data"].splice(0, data[index]["data"].length - jsonData["buffer"][index]["size"]);
-                        data[index]["changed"] = true;
+                        data[index].data = data[index].data.concat(nullToNaN(jsonData.buffer[index].buffer));
+                        if (jsonData.buffer[index].size > 0)
+                            data[index].data.splice(0, data[index].data.length - jsonData.buffer[index].size);
+                        data[index].changed = true;
                     } else {
                         data[index] = {};
-                        data[index]["data"] = nullToNaN(jsonData["buffer"][index]["buffer"]);
-                        data[index]["changed"] = true;
+                        data[index].data = nullToNaN(jsonData.buffer[index].buffer);
+                        data[index].changed = true;
                     }
                 }
                 updateViews();
-                updateMeasuring(jsonData["status"]);
+                updateMeasuring(jsonData.status);
                 errorNode.style.display = "none";
             },
             function() {
@@ -327,17 +327,17 @@
         if (fatalStop)
             return;
 
-        if (measuring != s["measuring"])
+        if (measuring != s.measuring)
             forceFull = true;
         if (sessionID == "")
-            sessionID = s["session"];
-        else if (sessionID != s["session"]) {
+            sessionID = s.session;
+        else if (sessionID != s.session) {
             fatalStop = true;
             askSessionReload();
         }
-        measuring = s["measuring"];
-        timedRun = s["timedRun"];
-        countDown = s["countDown"];
+        measuring = s.measuring;
+        timedRun = s.timedRun;
+        countDown = s.countDown;
         header.classList.toggle("active", measuring);
         header.classList.toggle("countdown", countDown != 0);
         if (countDown != 0) {
@@ -353,10 +353,10 @@
     }
 
     function updateViews() {
-        views[currentView]["elements"].forEach(function(ve) {
+        views[currentView].elements.forEach(function(ve) {
             if (ve.hasOwnProperty("dataInputFunction"))
-                ve["dataInputFunction"](data);
-            ve["dataCompleteFunction"]();
+                ve.dataInputFunction(data);
+            ve.dataCompleteFunction();
         });
     }
 
@@ -365,8 +365,8 @@
         for (i = 0; i < nElements; i++)
             elementData[i] = {};
 
-        views[currentView]["elements"].forEach(function(ve) {
-            viewsNode.innerHTML += ("<div class=\"elementBlock\">" + ve["html"] + "</div>");
+        views[currentView].elements.forEach(function(ve) {
+            viewsNode.innerHTML += ("<div class=\"elementBlock\">" + ve.html + "</div>");
         });
         adjustColors();
         forceFull = true;
