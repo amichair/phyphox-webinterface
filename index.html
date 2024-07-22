@@ -205,65 +205,60 @@
     }
 
     function composeVarStr(name, partial, partialComponent) {
-        var namePart = encodeURIComponent(name);
-        if (partial == "full")
-            return namePart + "=full";
-        if (partial == "partial" || partial == "partialXYZ") {
-            if ((!forceFull) && data.hasOwnProperty(partialComponent) && data[partialComponent].data.length > 0 && data.hasOwnProperty(name) && data[name].data.length > 0) {
-                if (partialComponent == name)
-                    return namePart + "=" + data[partialComponent].data[data[partialComponent].data.length-1];
-                else {
-                    var minLength = Math.min(data[partialComponent].data.length, data[name].data.length);
-                    return namePart + "=" + encodeURIComponent(data[partialComponent].data[minLength-1] + "|" + partialComponent);
+        var value; // empty (one sample) by default
+        if (partial == "full") {
+            value = "full";
+        } else if (partial == "partial" || partial == "partialXYZ") {
+            value = "full"; // fallback to full
+            if (!forceFull && data.hasOwnProperty(partialComponent) && data.hasOwnProperty(name)) {
+                var length = Math.min(data[partialComponent].data.length, data[name].data.length);
+                if (length > 0) {
+                    value = data[partialComponent].data[length - 1];
+                    if (partialComponent !== name)
+                        value += encodeURIComponent("|" + partialComponent);
                 }
-            } else
-                return namePart + "=full";
+            }
         }
-        return namePart;
+        return encodeURIComponent(name) + (value ? '=' + value : '');
     }
 
     function updateUsedVarStr() {
-        var usedVars = [];
-        var modePriority = [];
+        var vars = {};
+        var priorities = {};
         views[currentView].elements.forEach(function(ve) {
             if (ve.hasOwnProperty("dataInput")) {
-                for (var i = 0; i < ve.dataInput.length; i++) {
-                    if (ve.dataInput[i] == null)
+                let dataInput = ve.dataInput;
+                let updateMode = ve.updateMode;
+                for (var i = 0; i < dataInput.length; i++) {
+                    if (dataInput[i] == null)
                         continue;
-                    let varStr = ve.dataInput[i];
-                    let varKey = "buffer:" + varStr;
-                    if (ve.updateMode == "single" || ve.updateMode == "input") {
-                        if (modePriority[varKey] >= 1)
-                            continue;
-                        usedVars[varKey] = composeVarStr(varStr, "single");
-                        modePriority[varKey] = 1;
-                    } else if (ve.updateMode == "partial") {
-                        if (modePriority[varKey] >= 2)
-                            continue;
-                        var dependentVar = ((ve.dataInput.length > i + 1) && (i % 2 == 0)) ? ve.dataInput[i+1] : ve.dataInput[i];
-                        usedVars[varKey] = composeVarStr(varStr, "partial", dependentVar);
-                        modePriority[varKey] = 2;
-                    } else if (ve.updateMode == "partialXYZ") {
-                        if (modePriority[varKey] >= 3)
-                            continue;
-                        var dependentVar = ve.dataInput[Math.floor(i / 3)];
-                        usedVars[varKey] = composeVarStr(varStr, "partialXYZ", dependentVar);
-                        modePriority[varKey] = 3;
-                    } else if (ve.updateMode == "full") {
-                        if (modePriority[varKey] >= 4)
-                            continue;
-                        usedVars[varKey] = composeVarStr(varStr, "full");
-                        modePriority[varKey] = 4;
+                    let name = dataInput[i];
+                    let key = "buffer:" + name;
+                    let priority = priorities[key] || 0;
+                    if (priority < 1 && (updateMode == "single" || updateMode == "input")) {
+                        vars[key] = composeVarStr(name, "single");
+                        priorities[key] = 1;
+                    } else if (priority < 2 && updateMode == "partial") {
+                        var dependentVar = ((dataInput.length > i + 1) && (i % 2 == 0)) ? dataInput[i + 1] : dataInput[i];
+                        vars[key] = composeVarStr(name, "partial", dependentVar);
+                        priorities[key] = 2;
+                    } else if (priority < 3 && updateMode == "partialXYZ") {
+                        var dependentVar = dataInput[Math.floor(i / 3)];
+                        vars[key] = composeVarStr(name, "partialXYZ", dependentVar);
+                        priorities[key] = 3;
+                    } else if (priority < 4 && updateMode == "full") {
+                        vars[key] = composeVarStr(name, "full");
+                        priorities[key] = 4;
                     }
                 }
             }
         });
 
         usedVarStr = "";
-        for (var usedVar in usedVars) {
+        for (var v in vars) {
             if (usedVarStr != "")
                 usedVarStr += "&";
-            usedVarStr += usedVars[usedVar];
+            usedVarStr += vars[v];
         }
         forceFull = false;
     }
@@ -280,25 +275,28 @@
     function updateData() {
         updateUsedVarStr();
         ajax("get?" + usedVarStr,
-            function( jsonData ) {
-                for (var name in jsonData.buffer) {
-                    if (jsonData.buffer[name].updateMode == "partial" && data.hasOwnProperty(name) && data[name].data.length > 0) {
-                        if (jsonData.buffer[name].buffer.length == 0) {
-                            data[name].changed = false;
+            function(response) {
+                for (var name in response.buffer) {
+                    let buffer = response.buffer[name];
+                    let existing = data[name];
+                    if (buffer.updateMode == "partial" && existing && existing.data.length > 0) {
+                        if (buffer.buffer.length == 0) {
+                            existing.changed = false;
                             continue;
                         }
-                        data[name].data = data[name].data.concat(nullToNaN(jsonData.buffer[name].buffer));
-                        if (jsonData.buffer[name].size > 0)
-                            data[name].data.splice(0, data[name].data.length - jsonData.buffer[name].size);
-                        data[name].changed = true;
+                        existing.data = existing.data.concat(nullToNaN(buffer.buffer));
+                        if (buffer.size > 0)
+                            existing.data.splice(0, existing.data.length - buffer.size);
+                        existing.changed = true;
                     } else {
-                        data[name] = {};
-                        data[name].data = nullToNaN(jsonData.buffer[name].buffer);
-                        data[name].changed = true;
+                        data[name] = {
+                            data: nullToNaN(buffer.buffer),
+                            changed: true
+                        };
                     }
                 }
                 updateViews();
-                updateMeasuring(jsonData.status);
+                updateMeasuring(response.status);
                 errorNode.style.display = "none";
             },
             function() {
@@ -307,10 +305,7 @@
                 forceFull = true;
             },
             function() {
-                if (measuring)
-                    setTimeout(updateData, 30);
-                else
-                    setTimeout(updateData, 250);
+                setTimeout(updateData, measuring ? 30 : 250);
             },
             10000
         );
@@ -431,9 +426,8 @@
 
         var elements = document.getElementsByClassName("exclusive");
         for (var i = 0; i < elements.length; i++) {
-            var elem = elements[i];
-            elem.classList.remove("exclusive");
-        };
+            elements[i].classList.remove("exclusive");
+        }
     }
 
     function toggleExclusive(i) {
