@@ -444,33 +444,27 @@
             setExclusive(i);
     }
 
-    function zoomLarger(e) {
+    function zoom(e, factor) {
         leaveExclusive();
-        if (scaleFactor < 3)
-            scaleFactor *= 1.2;
+        scaleFactor = factor;
         saveSetting("scaleFactor", scaleFactor);
         body.style.fontSize = (100*scaleFactor)+"%";
         e.stopPropagation();
         recreateViews();
+    }
+
+    function zoomLarger(e) {
+        if (scaleFactor < 3)
+            zoom(e, scaleFactor * 1.2);
     }
 
     function zoomSmaller(e) {
-        leaveExclusive();
         if (scaleFactor > 0.5)
-            scaleFactor /= 1.2;
-        saveSetting("scaleFactor", scaleFactor);
-        body.style.fontSize = (100*scaleFactor)+"%";
-        e.stopPropagation();
-        recreateViews();
+            zoom(e, scaleFactor / 1.2);
     }
 
     function zoomDefault(e) {
-        leaveExclusive();
-        scaleFactor = 1.0;
-        saveSetting("scaleFactor", scaleFactor);
-        body.style.fontSize = (100*scaleFactor)+"%";
-        e.stopPropagation();
-        recreateViews();
+        zoom(e, 1.0);
     }
 
     function toggleBrightMode(e) {
